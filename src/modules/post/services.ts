@@ -1,8 +1,30 @@
-import { Post } from "../../../generated/prisma/client";
+import { POST, Post } from "../../../generated/prisma/client";
 import { PostWhereInput } from "../../../generated/prisma/models";
 import { prisma } from "../../lib/prisma";
 
-const getPost = async ({ search, tags }: { search: string | undefined, tags: string[] | [] }) => {
+const getPost = async ({
+    search,
+    tags,
+    isFeatured,
+    status,
+    authorId,
+    page,
+    limit,
+    skip,
+    sortBy,
+    sortOrder
+}: {
+    search: string | undefined,
+    tags: string[] | [],
+    isFeatured: boolean | undefined,
+    status: POST | undefined,
+    authorId: string | undefined,
+    page: number,
+    limit: number,
+    skip: number | undefined,
+    sortBy: string
+    sortOrder: string
+}) => {
     const andConditions: PostWhereInput[] = [];
     if (search) {
         andConditions.push({
@@ -34,20 +56,71 @@ const getPost = async ({ search, tags }: { search: string | undefined, tags: str
             }
         })
     }
+    if (typeof isFeatured === "boolean") {
+        andConditions.push({
+            isFeatured
+        })
+    }
+    if (status) {
+        andConditions.push({
+            status
+        })
+    }
+    if (authorId) {
+        andConditions.push({
+            authorId
+        })
+    }
     const result = await prisma.post.findMany({
+        skip: (page - 1) * limit,
+        take: limit,
+        where: {
+            AND: andConditions
+        },
+        orderBy: {
+            [sortBy]: sortOrder
+        }
+    });
+    const totalData = await prisma.post.count({
         where: {
             AND: andConditions
         }
-    });
-    return result;
+    })
+    const totalPage = Math.ceil(totalData / limit);
+
+    return {
+        data: result,
+        pagination: {
+            totalData,
+            page,
+            limit,
+            totalPage
+        }
+    }
 }
 
 const getSinglePost = async (id: string) => {
-    const result = await prisma.post.findMany({
-        where: {
-            id: id
-        }
-    });
+    // * Transaction 
+    const result = await prisma.$transaction(async (p) => {
+        // * Update view count 
+        await p.post.update({
+            where: {
+                id: id
+            },
+            data: {
+                views: {
+                    increment: 1
+                }
+            }
+        })
+        // * Get singlePost
+        const singlePost = await p.post.findUnique({
+            where: {
+                id: id
+            }
+        });
+        return singlePost
+    })
     return result;
 }
 
