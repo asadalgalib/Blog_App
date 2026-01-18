@@ -1,4 +1,4 @@
-import { POST, Post } from "../../../generated/prisma/client";
+import { COMMENT, POST, Post } from "../../../generated/prisma/client";
 import { PostWhereInput } from "../../../generated/prisma/models";
 import { prisma } from "../../lib/prisma";
 
@@ -79,8 +79,16 @@ const getPost = async ({
         },
         orderBy: {
             [sortBy]: sortOrder
+        },
+        include: {
+            _count: {
+                select: {
+                    comments: true
+                }
+            }
         }
     });
+    
     const totalData = await prisma.post.count({
         where: {
             AND: andConditions
@@ -117,8 +125,55 @@ const getSinglePost = async (id: string) => {
         const singlePost = await p.post.findUnique({
             where: {
                 id: id
+            },
+            include: {
+                comments: {
+                    where: {
+                        parentId: null,
+                        status: COMMENT.APPROVED
+                    },
+                    orderBy: { createdAt: "desc" },
+                    include: {
+                        replies: {
+                            where: {
+                                status: COMMENT.APPROVED
+                            },
+                            orderBy: { createdAt: "asc" },
+                            include: {
+                                replies: {
+                                    where: {
+                                        status: COMMENT.APPROVED
+                                    },
+                                    orderBy: { createdAt: "asc" },
+                                    include: {
+                                        replies: {
+                                            where: {
+                                                status: COMMENT.APPROVED
+                                            },
+                                            orderBy: { createdAt: "asc" },
+                                            include: {
+                                                replies: {
+                                                    where: {
+                                                        status: COMMENT.APPROVED
+                                                    },
+                                                    orderBy: { createdAt: "asc" },
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                _count: {
+                    select: {
+                        comments: true
+                    }
+                }
             }
         });
+
         return singlePost
     })
     return result;

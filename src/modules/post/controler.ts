@@ -46,9 +46,9 @@ const getSinglePost = async (req: Request, res: Response) => {
             })
         }
         const result = await postServices.getSinglePost(id);
-        res.status(201).json(result)
+        return res.status(201).json(result)
     } catch (error: any) {
-        res.status(400).json({
+        return res.status(400).json({
             message: "Something went wrong",
             error: error.message
         })
@@ -58,9 +58,9 @@ const getSinglePost = async (req: Request, res: Response) => {
 const createPost = async (req: Request, res: Response) => {
     try {
         const result = await postServices.createPost(req.body, req.user?.id as string);
-        res.status(201).json(result)
+        return res.status(201).json(result)
     } catch (error: any) {
-        res.status(400).json({
+        return res.status(400).json({
             message: error.message
         })
     }
